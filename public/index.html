@@ -190,35 +190,50 @@
         }
 
         .chat-container {
-            flex: 1;
-            max-width: 600px;
-            margin: 50px auto 0;
-            width: 100%;
-            height: calc(100vh - 50px);
-            background-color: white;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-            z-index: 1;
-        }
+    flex: 1;
+    max-width: 600px;
+    margin: 50px auto 0;
+    width: 100%;
+    height: calc(100vh - 50px);
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
 
-     .chat-messages {
+.chat-messages {
     flex: 1;
     padding: 15px;
     overflow-y: auto;
     display: flex;
-    margin-bottom: 50px; /* Reduce margin for better fit */
-    margin-top: 30px; /* Reduce margin */
-    flex-direction: column;
+    flex-direction: column-reverse; /* Changed to column-reverse */
     scroll-behavior: smooth;
     background-color: white;
     position: relative;
-    margin-top: 0;
-    font-size: 16px; /* Optional: decrease font size */
+    margin: 0;
+    font-size: 16px;
+    height: 100%;
+    -webkit-overflow-scrolling: touch; /* For smooth scrolling on iOS */
+}
+    #messages-wrapper {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+.message-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    overflow-anchor: none; /* Prevents auto-scrolling when new messages arrive */
 }
 
-    .message {
+.message {
     padding: 10px;
     border-radius: 20px;
     margin-bottom: 8px;
@@ -229,13 +244,23 @@
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    touch-action: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
     touch-action: manipulation;
 }
 
+/* Add this to ensure proper scrolling behavior */
+#chat-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Add this for better mobile scrolling */
+html, body {
+    height: 100%;
+    overflow: hidden;
+    -webkit-overflow-scrolling: touch;
+}
 .content {
     user-select: none;
     flex-grow: 1;
@@ -921,8 +946,7 @@
     </div>
 
     <script>  
-
-  let isLogin = true;
+let isLogin = true;
 let users = JSON.parse(localStorage.getItem('users')) || {};
 let longPressTimer;
 let isLongPress = false;
@@ -932,414 +956,490 @@ const SPAM_LIMIT = 5;
 const SPAM_WINDOW = 10000;
 const BAN_DURATION = 60000;
 const bannedUsers = {};
-const warnedUsers = {}; // New: Track users who have been warned
+const warnedUsers = {}; 
+
+// Notification variables
+let lastMessageId = null;
+let notificationPermissionGranted = false;
+let isLoadingMessages = false; // Add flag to prevent multiple loads
+let isNearBottom = true; // Track scroll position
 
 const elements = {
-    usernameInput: document.getElementById('usernameInput'),
-    messageInput: document.getElementById('user-input'),
-    sendButton: document.querySelector('.chat-input button'),
-    chatContainer: document.getElementById('chat-container'),
-    replyPreview: document.getElementById('reply-preview-container'),
-    errorDisplay: document.getElementById('errorDisplay')
+  usernameInput: document.getElementById('usernameInput'),
+  messageInput: document.getElementById('user-input'),
+  sendButton: document.querySelector('.chat-input button'),
+  chatContainer: document.getElementById('chat-container'),
+  messagesWrapper: document.getElementById('messages-wrapper'), // Add this wrapper
+  replyPreview: document.getElementById('reply-preview-container'),
+  errorDisplay: document.getElementById('errorDisplay')
 };
 
 let replyToText = null;
 let currentUsername = localStorage.getItem('chat_username') || '';
 
 if (currentUsername && elements.usernameInput) {
-    elements.usernameInput.value = currentUsername;
+  elements.usernameInput.value = currentUsername;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-        localStorage.setItem('chat_username', savedUser);
-    }
-    initializeChat();
+  const savedUser = localStorage.getItem('currentUser');
+  if (savedUser) {
+    localStorage.setItem('chat_username', savedUser);
+  }
+  
+  if ('Notification' in window) {
+    Notification.requestPermission().then(permission => {
+      notificationPermissionGranted = permission === 'granted';
+    });
+  }
+  
+  initializeChat();
 });
 
+// Add scroll event listener to track position
+function setupScrollListener() {
+  if (elements.chatContainer) {
+    elements.chatContainer.addEventListener('scroll', () => {
+      const threshold = 100;
+      const container = elements.chatContainer;
+      isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+    });
+  }
+}
+
 function toggleAuth() {
-    isLogin = !isLogin;
-    const authTitle = document.getElementById('auth-title');
-    const authButton = document.querySelector('.auth-box button');
-    const toggleText = document.getElementById('toggle-text');
-    const toggleLink = document.getElementById('toggle-link');
-    const errorMessage = document.getElementById('error-message');
-    const successMessage = document.getElementById('success-message');
+  isLogin = !isLogin;
+  const authTitle = document.getElementById('auth-title');
+  const authButton = document.querySelector('.auth-box button');
+  const toggleText = document.getElementById('toggle-text');
+  const toggleLink = document.getElementById('toggle-link');
+  const errorMessage = document.getElementById('error-message');
+  const successMessage = document.getElementById('success-message');
 
-    errorMessage.style.display = 'none';
-    successMessage.style.display = 'none';
+  errorMessage.style.display = 'none';
+  successMessage.style.display = 'none';
 
-    if (isLogin) {
-        authTitle.textContent = 'Login';
-        authButton.textContent = 'Login';
-        toggleText.textContent = "Don't have an account? ";
-        toggleLink.textContent = 'Sign Up';
-    } else {
-        authTitle.textContent = 'Sign Up';
-        authButton.textContent = 'Sign Up';
-        toggleText.textContent = 'Already have an account? ';
-        toggleLink.textContent = 'Login';
-    }
+  if (isLogin) {
+    authTitle.textContent = 'Login';
+    authButton.textContent = 'Login';
+    toggleText.textContent = "Don't have an account? ";
+    toggleLink.textContent = 'Sign Up';
+  } else {
+    authTitle.textContent = 'Sign Up';
+    authButton.textContent = 'Sign Up';
+    toggleText.textContent = 'Already have an account? ';
+    toggleLink.textContent = 'Login';
+  }
 }
 
 async function handleAuth() {
-    const username = document.getElementById('auth-username').value.trim();
-    const password = document.getElementById('auth-password').value;
-    const loader = document.getElementById('loader');
-    const errorMessage = document.getElementById('error-message');
-    const successMessage = document.getElementById('success-message');
+  const username = document.getElementById('auth-username').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const loader = document.getElementById('loader');
+  const errorMessage = document.getElementById('error-message');
+  const successMessage = document.getElementById('success-message');
 
-    errorMessage.style.display = 'none';
-    successMessage.style.display = 'none';
+  errorMessage.style.display = 'none';
+  successMessage.style.display = 'none';
 
-    if (!username || !password) {
-        errorMessage.textContent = 'Please enter both username and password';
-        errorMessage.style.display = 'block';
-        return;
-    }
+  if (!username || !password) {
+    errorMessage.textContent = 'Please enter both username and password';
+    errorMessage.style.display = 'block';
+    return;
+  }
 
-    if (username.length < 3 || username.length > 9) {
-        errorMessage.textContent = 'Username must be between 3 and 9 characters.';
-        errorMessage.style.display = 'block';
-        return;
-    }
+  if (username.length < 3 || username.length > 9) {
+    errorMessage.textContent = 'Username must be between 3 and 9 characters.';
+    errorMessage.style.display = 'block';
+    return;
+  }
 
-    if (password.length < 4 || password.length > 20) {
-        errorMessage.textContent = 'Password must be between 4 and 20 characters.';
-        errorMessage.style.display = 'block';
-        return;
-    }
+  if (password.length < 4 || password.length > 20) {
+    errorMessage.textContent = 'Password must be between 4 and 20 characters.';
+    errorMessage.style.display = 'block';
+    return;
+  }
 
-    loader.style.display = 'flex';
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  loader.style.display = 'flex';
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
-    if (isLogin) {
-        if (users[username] && users[username] === password) {
-            successMessage.textContent = 'Login successful!';
-            successMessage.style.display = 'block';
-            localStorage.setItem('currentUser', username);
-            localStorage.setItem('chat_username', username);
-            setTimeout(() => {
-                loader.style.display = 'none';
-                showContainer('chat');
-                document.querySelector('.chat-input').style.display = 'flex';
-                document.querySelector('.news-toggle').style.display = 'block';
-                updateGoTopBtn();
-                initializeChat();
-            }, 500);
-        } else {
-            loader.style.display = 'none';
-            errorMessage.textContent = 'Invalid username or password';
-            errorMessage.style.display = 'block';
-        }
+  if (isLogin) {
+    if (users[username] && users[username] === password) {
+      successMessage.textContent = 'Login successful!';
+      successMessage.style.display = 'block';
+      localStorage.setItem('currentUser', username);
+      localStorage.setItem('chat_username', username);
+      setTimeout(() => {
+        loader.style.display = 'none';
+        showContainer('chat');
+        document.querySelector('.chat-input').style.display = 'flex';
+        document.querySelector('.news-toggle').style.display = 'block';
+        initializeChat();
+      }, 500);
     } else {
-        if (users[username]) {
-            loader.style.display = 'none';
-            errorMessage.textContent = 'Username already exists';
-            errorMessage.style.display = 'block';
-        } else {
-            users[username] = password;
-            localStorage.setItem('users', JSON.stringify(users));
-            successMessage.textContent = 'Account created successfully! Please login.';
-            successMessage.style.display = 'block';
-            setTimeout(() => {
-                loader.style.display = 'none';
-                toggleAuth();
-            }, 500);
-        }
+      loader.style.display = 'none';
+      errorMessage.textContent = 'Invalid username or password';
+      errorMessage.style.display = 'block';
     }
+  } else {
+    if (users[username]) {
+      loader.style.display = 'none';
+      errorMessage.textContent = 'Username already exists';
+      errorMessage.style.display = 'block';
+    } else {
+      users[username] = password;
+      localStorage.setItem('users', JSON.stringify(users));
+      successMessage.textContent = 'Account created successfully! Please login.';
+      successMessage.style.display = 'block';
+      setTimeout(() => {
+        loader.style.display = 'none';
+        toggleAuth();
+      }, 500);
+    }
+  }
 }
 
 function showContainer(containerId) {
-    const containers = document.querySelectorAll('.container');
-    containers.forEach(container => {
-        container.style.display = 'none';
-    });
-    document.getElementById(containerId).style.display = 'block';
-    currentUsername = localStorage.getItem('chat_username') || '';
+  const containers = document.querySelectorAll('.container');
+  containers.forEach(container => {
+    container.style.display = 'none';
+  });
+  document.getElementById(containerId).style.display = 'block';
+  currentUsername = localStorage.getItem('chat_username') || '';
 }
 
 function initializeChat() {
-    currentUsername = localStorage.getItem('chat_username') || '';
+  currentUsername = localStorage.getItem('chat_username') || '';
 
-    if (elements.usernameInput) {
-        elements.usernameInput.value = currentUsername;
-        elements.usernameInput.addEventListener('input', (e) => {
-            currentUsername = e.target.value.trim();
-            localStorage.setItem('chat_username', currentUsername);
-        });
+  if (elements.usernameInput) {
+    elements.usernameInput.value = currentUsername;
+    elements.usernameInput.addEventListener('input', (e) => {
+      currentUsername = e.target.value.trim();
+      localStorage.setItem('chat_username', currentUsername);
+    });
+  }
+
+  elements.messageInput.addEventListener('input', () => {
+    autoResize(elements.messageInput);
+    const hasText = elements.messageInput.value.trim().length > 0;
+    elements.sendButton.disabled = !hasText;
+    elements.sendButton.classList.toggle('enabled', hasText);
+  });
+
+  elements.messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
+  });
 
-    elements.messageInput.addEventListener('input', () => {
-        autoResize(elements.messageInput);
-        const hasText = elements.messageInput.value.trim().length > 0;
-        elements.sendButton.disabled = !hasText;
-        elements.sendButton.classList.toggle('enabled', hasText);
-    });
-
-    elements.messageInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
-
-    loadMessages();
-    setInterval(loadMessages, 3000);
+  setupScrollListener(); // Initialize scroll tracking
+  loadMessages();
+  setInterval(loadMessages, 3000);
 }
 
 function autoResize(textarea) {
-    textarea.style.height = 'auto';
-    textarea.style.height = (textarea.scrollHeight > 100 ? 100 : textarea.scrollHeight) + 'px';
+  textarea.style.height = 'auto';
+  textarea.style.height = (textarea.scrollHeight > 100 ? 100 : textarea.scrollHeight) + 'px';
 }
 
 async function loadMessages() {
-    try {
-        const response = await fetch('/messages');
-        if (!response.ok) throw new Error('Failed to load messages');
-        const data = await response.json();
-        renderMessages(data);
-    } catch (error) {
-        showError(error.message);
+  if (isLoadingMessages) return;
+  isLoadingMessages = true;
+  
+  try {
+    const response = await fetch('/messages');
+    if (!response.ok) throw new Error('Failed to load messages');
+    const data = await response.json();
+    
+    if (data.length > 0) {
+      const latestMessage = data[0];
+      if (latestMessage.id !== lastMessageId && 
+          latestMessage.username !== currentUsername &&
+          document.visibilityState !== 'visible') {
+        showNotification(latestMessage.username, latestMessage.content);
+      }
+      lastMessageId = latestMessage.id;
     }
+    
+    renderMessages(data);
+  } catch (error) {
+    console.error("Error loading messages:", error);
+  } finally {
+    isLoadingMessages = false;
+  }
+}
+
+function showNotification(username, message) {
+  if (!notificationPermissionGranted || !('Notification' in window)) return;
+  
+  const notification = new Notification(`${username} says:`, {
+    body: message.length > 50 ? message.substring(0, 50) + '...' : message,
+    icon: 'https://i.pravatar.cc/50?u=' + encodeURIComponent(username)
+  });
+  
+  notification.onclick = () => {
+    window.focus();
+  };
 }
 
 function renderMessages(messages) {
-    elements.chatContainer.innerHTML = '';
-    messages.reverse().forEach(msg => {
-        const isOwn = msg.username?.trim().toLowerCase() === currentUsername?.trim().toLowerCase();
-        displayMessage(msg.content, isOwn ? 'sent' : 'received', msg.reply_to, msg.username, msg.id);
-    });
-    scrollToBottomIfNearBottom(elements.chatContainer);
+  // Store current scroll position
+  const container = elements.chatContainer;
+  const wasNearBottom = isNearBottom;
+  const previousScrollHeight = container.scrollHeight;
+  const previousScrollTop = container.scrollTop;
+  
+  // Create document fragment for better performance
+  const fragment = document.createDocumentFragment();
+  
+  messages.reverse().forEach(msg => {
+    const isOwn = msg.username?.trim().toLowerCase() === currentUsername?.trim().toLowerCase();
+    const messageElement = createMessageElement(msg.content, isOwn ? 'sent' : 'received', msg.reply_to, msg.username, msg.id);
+    fragment.appendChild(messageElement);
+  });
+  
+  // Clear and repopulate
+  elements.messagesWrapper.innerHTML = '';
+  elements.messagesWrapper.appendChild(fragment);
+  
+  // Restore scroll position
+  if (wasNearBottom) {
+    container.scrollTop = container.scrollHeight;
+  } else {
+    const newScrollHeight = container.scrollHeight;
+    container.scrollTop = previousScrollTop + (newScrollHeight - previousScrollHeight);
+  }
 }
 
-function scrollToBottomIfNearBottom(container, threshold = 100) {
-    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
-    if (isNearBottom) {
-        container.scrollTop = container.scrollHeight;
-    }
-}
+function createMessageElement(text, sender, repliedTo, username, messageId) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${sender}`;
+  messageDiv.dataset.id = messageId;
+  messageDiv.dataset.content = text;
 
-function displayMessage(text, sender, repliedTo = null, username = '', messageId = null) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${sender}`;
-    messageDiv.dataset.id = messageId;
-    messageDiv.dataset.content = text;
+  const avatarDiv = document.createElement('div');
+  avatarDiv.className = 'avatar';
+  avatarDiv.innerHTML = `<img src="https://i.pravatar.cc/50?u=${encodeURIComponent(username)}" alt="avatar">`;
 
-    const avatarDiv = document.createElement('div');
-    avatarDiv.className = 'avatar';
-    avatarDiv.innerHTML = `<img src="https://i.pravatar.cc/50?u=${encodeURIComponent(username)}" alt="avatar">`;
+  const messageBody = document.createElement('div');
+  messageBody.className = 'message-body';
 
-    const messageBody = document.createElement('div');
-    messageBody.className = 'message-body';
+  if (username) {
+    const usernameDiv = document.createElement('div');
+    usernameDiv.className = 'username';
+    usernameDiv.textContent = username;
+    messageBody.appendChild(usernameDiv);
+  }
 
-    if (username) {
-        const usernameDiv = document.createElement('div');
-        usernameDiv.className = 'username';
-        usernameDiv.textContent = username;
-        messageBody.appendChild(usernameDiv);
-    }
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'content';
 
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'content';
+  if (repliedTo) {
+    const replyBubble = document.createElement('div');
+    replyBubble.className = 'reply-preview';
+    replyBubble.textContent = repliedTo;
+    contentDiv.appendChild(replyBubble);
+  }
 
-    if (repliedTo) {
-        const replyBubble = document.createElement('div');
-        replyBubble.className = 'reply-preview';
-        replyBubble.textContent = repliedTo;
-        contentDiv.appendChild(replyBubble);
-    }
+  const imagePattern = /(https?:\/\/[^\s]+\.(?:png|jpe?g|gif|webp))/gi;
+  const audioPattern = /(https?:\/\/[^\s]+\.(?:mp3|ogg|wav|m4a|mp4))/gi;
 
-    const imagePattern = /(https?:\/\/[^\s]+\.(?:png|jpe?g|gif|webp))/gi;
-    const audioPattern = /(https?:\/\/[^\s]+\.(?:mp3|ogg|wav|m4a|mp4))/gi;
+  const imageMatches = [...text.matchAll(imagePattern)];
+  const audioMatches = [...text.matchAll(audioPattern)];
 
-    const imageMatches = [...text.matchAll(imagePattern)];
-    const audioMatches = [...text.matchAll(audioPattern)];
+  let modifiedText = text;
+  [...imageMatches, ...audioMatches].forEach(match => {
+    modifiedText = modifiedText.replace(match[0], '');
+  });
 
-    let modifiedText = text;
-    [...imageMatches, ...audioMatches].forEach(match => {
-        modifiedText = modifiedText.replace(match[0], '');
-    });
+  modifiedText = modifiedText.trim();
+  if (modifiedText) {
+    const textDiv = document.createElement('div');
+    textDiv.textContent = modifiedText;
+    contentDiv.appendChild(textDiv);
+  }
 
-    modifiedText = modifiedText.trim();
-    if (modifiedText) {
-        const textDiv = document.createElement('div');
-        textDiv.textContent = modifiedText;
-        contentDiv.appendChild(textDiv);
-    }
+  imageMatches.forEach(match => {
+    const img = document.createElement('img');
+    img.src = match[0];
+    img.alt = "Image";
+    contentDiv.appendChild(img);
+  });
 
-    imageMatches.forEach(match => {
-        const img = document.createElement('img');
-        img.src = match[0];
-        img.alt = "Image";
-        contentDiv.appendChild(img);
-    });
+  audioMatches.forEach(match => {
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.src = match[0];
+    contentDiv.appendChild(audio);
+  });
 
-    audioMatches.forEach(match => {
-        const audio = document.createElement('audio');
-        audio.controls = true;
-        audio.src = match[0];
-        contentDiv.appendChild(audio);
-    });
+  messageBody.appendChild(contentDiv);
 
-    messageBody.appendChild(contentDiv);
+  if (sender === 'sent') {
+    messageDiv.appendChild(messageBody);
+    messageDiv.appendChild(avatarDiv);
+  } else {
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(messageBody);
+  }
 
-    if (sender === 'sent') {
-        messageDiv.appendChild(messageBody);
-        messageDiv.appendChild(avatarDiv);
-    } else {
-        messageDiv.appendChild(avatarDiv);
-        messageDiv.appendChild(messageBody);
-    }
+  messageDiv.addEventListener('touchstart', handleTouchStart);
+  messageDiv.addEventListener('touchend', handleTouchEnd);
+  messageDiv.addEventListener('touchmove', handleTouchMove);
+  messageDiv.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    showMessageContextMenu(e, messageDiv);
+  });
 
-    elements.chatContainer.appendChild(messageDiv);
-
-    messageDiv.addEventListener('touchstart', handleTouchStart);
-    messageDiv.addEventListener('touchend', handleTouchEnd);
-    messageDiv.addEventListener('touchmove', handleTouchMove);
-    messageDiv.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        showMessageContextMenu(e, messageDiv);
-    });
+  return messageDiv;
 }
 
 async function sendMessage() {
-    const content = elements.messageInput.value.trim();
-    currentUsername = localStorage.getItem('chat_username') || '';
-    const username = currentUsername;
+  const content = elements.messageInput.value.trim();
+  currentUsername = localStorage.getItem('chat_username') || '';
+  const username = currentUsername;
 
-    if (!content || !username) {
-        return showError('Please enter both username and message');
+  if (!content || !username) {
+    return showError('Please enter both username and message');
+  }
+
+  const lowerContent = content.toLowerCase();
+  if (badWords.some(word => lowerContent.includes(word))) {
+    if (!warnedUsers[username]) {
+      warnedUsers[username] = true;
+      return showError('Warning: bad word detected! If you repeat, you will be banned.');
+    } else {
+      bannedUsers[username] = Date.now() + BAN_DURATION;
+      delete users[username];
+      localStorage.setItem('users', JSON.stringify(users));
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('chat_username');
+      showError('You used bad words again. Account deleted and banned.');
+      setTimeout(() => {
+        location.reload();
+      }, 2000);
+      return;
     }
+  }
 
-    const lowerContent = content.toLowerCase();
-    if (badWords.some(word => lowerContent.includes(word))) {
-        if (!warnedUsers[username]) {
-            warnedUsers[username] = true;
-            return showError('Warning: bad word detected! If you repeat, you will be banned.');
-        } else {
-            bannedUsers[username] = Date.now() + BAN_DURATION;
-            delete users[username];
-            localStorage.setItem('users', JSON.stringify(users));
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('chat_username');
-            showError('You used bad words again. Account deleted and banned.');
-            setTimeout(() => {
-                location.reload();
-            }, 2000);
-            return;
-        }
-    }
+  const now = Date.now();
+  if (bannedUsers[username] && bannedUsers[username] > now) {
+    return showError(`You're banned. Wait ${Math.ceil((bannedUsers[username] - now) / 1000)}s.`);
+  }
 
-    const now = Date.now();
-    if (bannedUsers[username] && bannedUsers[username] > now) {
-        return showError(`You're banned. Wait ${Math.ceil((bannedUsers[username] - now) / 1000)}s.`);
-    }
+  if (!spamTracker[username]) {
+    spamTracker[username] = [];
+  }
 
-    if (!spamTracker[username]) {
-        spamTracker[username] = [];
-    }
+  spamTracker[username].push(now);
+  spamTracker[username] = spamTracker[username].filter(ts => now - ts <= SPAM_WINDOW);
 
-    spamTracker[username].push(now);
-    spamTracker[username] = spamTracker[username].filter(ts => now - ts <= SPAM_WINDOW);
+  if (spamTracker[username].length > SPAM_LIMIT) {
+    bannedUsers[username] = now + BAN_DURATION;
+    return showError("You're banned for spamming.");
+  }
 
-    if (spamTracker[username].length > SPAM_LIMIT) {
-        bannedUsers[username] = now + BAN_DURATION;
-        return showError("You're banned for spamming.");
-    }
+  try {
+    elements.sendButton.disabled = true;
+    elements.sendButton.classList.remove('enabled');
 
-    try {
-        elements.sendButton.disabled = true;
-        elements.sendButton.classList.remove('enabled');
-
-        const payload = {
-            content,
-            username,
-            reply_to: replyToText || null
-        };
-
-        const response = await fetch('/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) throw new Error('Failed to send message');
-
-        displayMessage(content, 'sent', replyToText, username);
-        fetchChatResponse(content);
-        elements.messageInput.value = '';
-        autoResize(elements.messageInput);
-        clearReply();
-
-    } catch (error) {
-        showError(error.message);
-    } finally {
-        elements.sendButton.disabled = true;
-        elements.sendButton.classList.remove('enabled');
-    }
+    const payload = { content, username, reply_to: replyToText || null };
+    const response = await fetch('/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error('Failed to send message');
+    
+    displayMessage(content, 'sent', replyToText, username);
+    fetchChatResponse(content);
+    elements.messageInput.value = '';
+    autoResize(elements.messageInput);
+    clearReply();
+    
+    // Scroll to bottom after sending
+    elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    elements.sendButton.disabled = true;
+    elements.sendButton.classList.remove('enabled');
+  }
 }
 
 async function fetchChatResponse(userInput) {
-    try {
-        const response = await fetch('/api/command', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: userInput }),
-        });
+  try {
+    const response = await fetch('/api/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: userInput }),
+    });
 
-        const data = await response.json();
-        if (data.reply) {
-            if (Array.isArray(data.reply)) {
-                data.reply.forEach(reply => displayMessage(reply, 'received'));
-            } else {
-                displayMessage(data.reply, 'received');
-            }
-        }
-    } catch (error) {
-        console.error("Error fetching AI response:", error);
+    const data = await response.json();
+    if (data.reply) {
+      if (Array.isArray(data.reply)) {
+        data.reply.forEach(reply => displayMessage(reply, 'received'));
+      } else {
+        displayMessage(data.reply, 'received');
+      }
+      
+      // Scroll to bottom if near bottom when AI responds
+      if (isNearBottom) {
+        elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+      }
     }
+  } catch (error) {
+    console.error("Error fetching AI response:", error);
+  }
 }
 
 function handleTouchStart(e) {
-    isLongPress = false;
-    e.currentTarget.classList.add('no-select');
-    longPressTimer = setTimeout(() => {
-        isLongPress = true;
-        showMessageContextMenu(e, e.currentTarget);
-    }, 500);
+  isLongPress = false;
+  e.currentTarget.classList.add('no-select');
+  longPressTimer = setTimeout(() => {
+    isLongPress = true;
+    showMessageContextMenu(e, e.currentTarget);
+  }, 500);
 }
 
 function handleTouchMove(e) {
-    clearTimeout(longPressTimer);
-    e.currentTarget.classList.remove('no-select');
+  clearTimeout(longPressTimer);
+  e.currentTarget.classList.remove('no-select');
 }
 
 function handleTouchEnd(e) {
-    clearTimeout(longPressTimer);
-    e.currentTarget.classList.remove('no-select');
+  clearTimeout(longPressTimer);
+  e.currentTarget.classList.remove('no-select');
 }
 
 function showError(message) {
-    if (elements.errorDisplay) {
-        elements.errorDisplay.textContent = message;
-        elements.errorDisplay.style.display = 'block';
-        setTimeout(() => {
-            elements.errorDisplay.style.display = 'none';
-        }, 3000);
-    } else {
-        alert(message);
-    }
+  if (elements.errorDisplay) {
+    elements.errorDisplay.textContent = message;
+    elements.errorDisplay.style.display = 'block';
+    setTimeout(() => {
+      elements.errorDisplay.style.display = 'none';
+    }, 3000);
+  } else {
+    alert(message);
+  }
 }
 
 function clearReply() {
-    replyToText = null;
-    if (elements.replyPreview) {
-        elements.replyPreview.style.display = 'none';
-        elements.replyPreview.textContent = '';
-    }
+  replyToText = null;
+  if (elements.replyPreview) {
+    elements.replyPreview.style.display = 'none';
+    elements.replyPreview.textContent = '';
+  }
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (elements.messagesWrapper.lastChild) {
+      lastMessageId = elements.messagesWrapper.lastChild.dataset.id;
+    }
+  }
+});
   function showMessageContextMenu(e, message) {  
     const messageText = message.dataset.content || '';  
     const messageId = message.dataset.id;  
