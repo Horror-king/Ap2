@@ -190,42 +190,35 @@
         }
 
         .chat-container {
-    flex: 1;
-    max-width: 600px;
-    margin: 50px auto 0;
-    width: 100%;
-    height: calc(100vh - 50px);
-    background-color: white;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    overflow: hidden;
-    z-index: 1;
-}
+            flex: 1;
+            max-width: 600px;
+            margin: 50px auto 0;
+            width: 100%;
+            height: calc(100vh - 50px);
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
 
-.chat-messages {
+     .chat-messages {
     flex: 1;
     padding: 15px;
     overflow-y: auto;
     display: flex;
-    flex-direction: column-reverse; /* Changed to column-reverse */
+    margin-bottom: 50px; /* Reduce margin for better fit */
+    margin-top: 30px; /* Reduce margin */
+    flex-direction: column;
     scroll-behavior: smooth;
     background-color: white;
     position: relative;
-    margin: 0;
-    font-size: 16px;
-    height: 100%;
-    -webkit-overflow-scrolling: touch; /* For smooth scrolling on iOS */
+    margin-top: 0;
+    font-size: 16px; /* Optional: decrease font size */
 }
 
-.message-container {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    overflow-anchor: none; /* Prevents auto-scrolling when new messages arrive */
-}
-
-.message {
+    .message {
     padding: 10px;
     border-radius: 20px;
     margin-bottom: 8px;
@@ -236,23 +229,13 @@
     display: flex;
     align-items: flex-start;
     gap: 8px;
+    touch-action: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
     touch-action: manipulation;
 }
 
-/* Add this to ensure proper scrolling behavior */
-#chat-container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-}
-
-/* Add this for better mobile scrolling */
-html, body {
-    height: 100%;
-    overflow: hidden;
-    -webkit-overflow-scrolling: touch;
-}
 .content {
     user-select: none;
     flex-grow: 1;
