@@ -188,37 +188,49 @@
         .active {
             display: block;
         }
+        
+html, body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: auto;
+    touch-action: none;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+}
 
-        .chat-container {
-            flex: 1;
-            max-width: 600px;
-            margin: 50px auto 0;
-            width: 100%;
-            height: calc(100vh - 50px);
-            background-color: white;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-            z-index: 1;
-        }
+.chat-container {
+    flex: 1;
+    max-width: 600px;
+    margin: 50px auto 0;
+    width: 100%;
+    height: calc(100vh - 50px);
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
 
-     .chat-messages {
+.chat-messages {
     flex: 1;
     padding: 15px;
     overflow-y: auto;
     display: flex;
-    margin-bottom: 50px; /* Reduce margin for better fit */
-    margin-top: 30px; /* Reduce margin */
+    margin-bottom: 50px;
     flex-direction: column;
     scroll-behavior: smooth;
     background-color: white;
     position: relative;
     margin-top: 0;
-    font-size: 16px; /* Optional: decrease font size */
+    font-size: 16px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: auto;
 }
 
-    .message {
+.message {
     padding: 10px;
     border-radius: 20px;
     margin-bottom: 8px;
@@ -235,7 +247,7 @@
     user-select: none;
     touch-action: manipulation;
 }
-
+     
 .content {
     user-select: none;
     flex-grow: 1;
