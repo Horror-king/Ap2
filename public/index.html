@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -188,68 +189,66 @@
         .active {
             display: block;
         }
-  
-  html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  overflow: hidden;
-  overscroll-behavior-y: none;
-  -webkit-overflow-scrolling: auto;
-  touch-action: none;
-}
-
-body {
-  position: fixed; /* Prevent bounce and pull-to-refresh */
-  width: 100%;
+        
+html, body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: auto;
+    touch-action: none;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
 }
 
 .chat-container {
-  flex: 1;
-  max-width: 600px;
-  margin: 50px auto 0;
-  width: 100%;
-  height: calc(100vh - 50px);
-  background-color: white;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
-  z-index: 1;
+    flex: 1;
+    max-width: 600px;
+    margin: 50px auto 0;
+    width: 100%;
+    height: calc(100vh - 50px);
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
 }
 
 .chat-messages {
-  flex: 1;
-  padding: 15px;
-  overflow-y: scroll;
-  display: flex;
-  margin-bottom: 50px;
-  flex-direction: column;
-  scroll-behavior: smooth;
-  background-color: white;
-  position: relative;
-  margin-top: 0;
-  font-size: 16px;
-  overscroll-behavior: contain;
-  touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    margin-bottom: 50px;
+    flex-direction: column;
+    scroll-behavior: smooth;
+    background-color: white;
+    position: relative;
+    margin-top: 0;
+    font-size: 16px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: auto;
 }
 
 .message {
-  padding: 10px;
-  border-radius: 20px;
-  margin-bottom: 8px;
-  max-width: 83%;
-  word-wrap: break-word;
-  white-space: pre-wrap;
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  user-select: none;
-  touch-action: manipulation;
+    padding: 10px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+    max-width: 83%;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    touch-action: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
 }
-        
+     
 .content {
     user-select: none;
     flex-grow: 1;
@@ -1076,7 +1075,7 @@ async function handleAuth() {
   }
 }
 
-  function showContainer(containerId) {
+function showContainer(containerId) {
   const containers = document.querySelectorAll('.container');
   containers.forEach(container => {
     container.style.display = 'none';
@@ -1263,19 +1262,16 @@ async function sendMessage() {
     return showError('Please enter both username and message');
   }
 
-  const now = Date.now();
-  if (bannedUsers[username] && bannedUsers[username] > now) {
-    return showError(`You're banned. Wait ${Math.ceil((bannedUsers[username] - now) / 1000)}s.`);
-  }
-
   const lowerContent = content.toLowerCase();
   if (badWords.some(word => lowerContent.includes(word))) {
     if (!warnedUsers[username]) {
       warnedUsers[username] = true;
       return showError('Warning: bad word detected! If you repeat, you will be banned.');
     } else {
-      bannedUsers[username] = now + BAN_DURATION;
-      warnedUsers[username] = false;
+      bannedUsers[username] = Date.now() + BAN_DURATION;
+      delete users[username];
+      localStorage.setItem('users', JSON.stringify(users));
+      localStorage.removeItem('currentUser');
       localStorage.removeItem('chat_username');
       showError('You used bad words again. Account deleted and banned.');
       setTimeout(() => {
@@ -1283,6 +1279,11 @@ async function sendMessage() {
       }, 2000);
       return;
     }
+  }
+
+  const now = Date.now();
+  if (bannedUsers[username] && bannedUsers[username] > now) {
+    return showError(`You're banned. Wait ${Math.ceil((bannedUsers[username] - now) / 1000)}s.`);
   }
 
   if (!spamTracker[username]) {
@@ -1384,6 +1385,7 @@ function clearReply() {
 // Track page visibility for notifications
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
+    // When page becomes visible, update lastMessageId to prevent duplicate notifications
     if (elements.chatContainer.lastChild) {
       lastMessageId = elements.chatContainer.lastChild.dataset.id;
     }
@@ -1688,35 +1690,33 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-    function openZoom(src) {
-        document.body.style.overflow = 'hidden';
-        const overlay = document.getElementById('zoom-overlay');
-        const zoomImage = document.getElementById('zoom-image');
-        const downloadBtn = document.getElementById('download-btn');
+function openZoom(src) {
+    document.body.style.overflow = 'hidden';
+    const overlay = document.getElementById('zoom-overlay');
+    const zoomImage = document.getElementById('zoom-image');
+    const downloadBtn = document.getElementById('download-btn');
 
-        zoomImage.src = src;
+    zoomImage.src = src;
 
-        // Force download filename
-        downloadBtn.href = src;
-        downloadBtn.setAttribute('download', 'image.jpg');
+    // Force download filename
+    downloadBtn.href = src;
+    downloadBtn.setAttribute('download', 'image.jpg');
 
-        overlay.style.display = 'flex';
-    }
+    overlay.style.display = 'flex';
+}
 
-    function closeZoom() {
-        document.body.style.overflow = '';
-        document.getElementById('zoom-overlay').style.display = 'none';
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-        document.getElementById('user-input').addEventListener('keypress', function (e) {
+function closeZoom() {
+    document.body.style.overflow = '';
+    document.getElementById('zoom-overlay').style.display = 'none';
+}
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
             }
         });
 
-        document.querySelector('.chat-input button').addEventListener('touchstart', function (e) {
+        document.querySelector('.chat-input button').addEventListener('touchstart', function(e) {
             e.preventDefault();
             sendMessage();
         });
@@ -1733,108 +1733,114 @@ document.addEventListener('visibilitychange', () => {
 
         document.getElementById("year").textContent = new Date().getFullYear();
 
-        updateGoTopBtn();
-        handleScroll();
-        populateNews();
+        document.addEventListener('DOMContentLoaded', function () {
+            updateGoTopBtn();
+            handleScroll();
+            populateNews();
 
-        document.querySelector('.gotopbtn').addEventListener('click', function (e) {
-            e.preventDefault();
-            document.getElementById('chat-container').scrollTo({
-                top: 0,
-                behavior: 'smooth'
+            document.querySelector('.gotopbtn').addEventListener('click', function (e) {
+                e.preventDefault();
+                document.getElementById('chat-container').scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
             });
+
+            document.getElementById('chat-container').addEventListener('scroll', handleScroll);
+
+            const currentUser = localStorage.getItem('currentUser');
+            if (currentUser) {
+                document.querySelector('.news-toggle').style.display = 'block';
+            } else {
+                document.querySelector('.news-toggle').style.display = 'none';
+                document.querySelector('.news-container').style.display = 'none';
+            }
         });
 
-        document.getElementById('chat-container').addEventListener('scroll', handleScroll);
 
-        const currentUser = localStorage.getItem('currentUser');
-        if (currentUser) {
-            document.querySelector('.news-toggle').style.display = 'block';
-            showContainer('chat');
-            document.querySelector('.chat-input').style.display = 'flex';
-        } else {
-            document.querySelector('.news-toggle').style.display = 'none';
-            document.querySelector('.news-container').style.display = 'none';
+        function handleScroll() {
+            const goTopBtn = document.querySelector('.gotopbtn');
+            const chatContainer = document.getElementById('chat-container');
+            if (chatContainer.scrollTop > 200) {
+                goTopBtn.style.display = 'block';
+            } else {
+                goTopBtn.style.display = 'none';
+            }
         }
 
-        document.getElementById('overlay').addEventListener('click', function () {
+        function updateGoTopBtn() {
+            const goTopBtn = document.querySelector('.gotopbtn');
+            const currentUser = localStorage.getItem('currentUser');
+            if (currentUser) {
+                goTopBtn.style.display = 'none';
+            } else {
+                goTopBtn.style.display = 'none';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            document.getElementById('auth-container').style.display = 'flex';
+            document.querySelector('.menu').style.display = 'none';
+            document.querySelector('.chat-input').style.display = 'none';
+            document.getElementById('dropdown').style.display = 'none';
+            document.querySelector('.news-toggle').style.display = 'none';
+            document.querySelector('.news-container').style.display = 'none';
+            document.querySelectorAll('.container').forEach(container => container.classList.remove('active'));
+            updateGoTopBtn();
+        }
+
+        function toggleDropdown() {
+            const dropdown = document.getElementById('dropdown');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function showContainer(containerId) {
+            if (containerId === 'chat') {
+                const containers = document.querySelectorAll('.container');
+                containers.forEach(container => container.classList.remove('active'));
+                const selectedContainer = document.getElementById(containerId);
+                selectedContainer.classList.add('active');
+            } else {
+                document.getElementById(containerId).style.display = 'block';
+                document.getElementById('overlay').style.display = 'block';
+            }
+
+            document.getElementById('dropdown').style.display = 'none';
+            document.getElementById('auth-container').style.display = 'none';
+            document.querySelector('.menu').style.display = 'flex';
+        }
+
+        function hideContainer(containerId) {
+            document.getElementById(containerId).style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+    function openZoom(src) {
+    document.body.style.overflow = 'hidden';
+    const overlay = document.getElementById('zoom-overlay');
+    const zoomImage = document.getElementById('zoom-image');
+    zoomImage.src = src;
+    overlay.style.display = 'flex';
+}
+
+function closeZoom() {
+    document.body.style.overflow = '';
+    document.getElementById('zoom-overlay').style.display = 'none';
+}
+
+        document.getElementById('overlay').addEventListener('click', function() {
             document.querySelectorAll('.about-container, .features-container, .help-container').forEach(container => {
                 container.style.display = 'none';
             });
             this.style.display = 'none';
         });
-    });
 
-    function handleScroll() {
-        const goTopBtn = document.querySelector('.gotopbtn');
-        const chatContainer = document.getElementById('chat-container');
-        if (chatContainer.scrollTop > 200) {
-            goTopBtn.style.display = 'block';
-        } else {
-            goTopBtn.style.display = 'none';
-        }
-    }
-
-    function updateGoTopBtn() {
-        const goTopBtn = document.querySelector('.gotopbtn');
         const currentUser = localStorage.getItem('currentUser');
         if (currentUser) {
-            goTopBtn.style.display = 'none';
-        } else {
-            goTopBtn.style.display = 'none';
-        }
-    }
-
-    function logout() {
-        localStorage.removeItem('currentUser');
-        document.getElementById('auth-container').style.display = 'flex';
-        document.querySelector('.menu').style.display = 'none';
-        document.querySelector('.chat-input').style.display = 'none';
-        document.getElementById('dropdown').style.display = 'none';
-        document.querySelector('.news-toggle').style.display = 'none';
-        document.querySelector('.news-container').style.display = 'none';
-        document.querySelectorAll('.container').forEach(container => container.classList.remove('active'));
-        updateGoTopBtn();
-    }
-
-    function toggleDropdown() {
-        const dropdown = document.getElementById('dropdown');
-        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-    }
-
-    function showContainer(containerId) {
-        if (containerId === 'chat') {
-            const containers = document.querySelectorAll('.container');
-            containers.forEach(container => container.classList.remove('active'));
-            const selectedContainer = document.getElementById(containerId);
-            selectedContainer.classList.add('active');
-        } else {
-            document.getElementById(containerId).style.display = 'block';
-            document.getElementById('overlay').style.display = 'block';
+            showContainer('chat');
+            document.querySelector('.chat-input').style.display = 'flex';
         }
 
-        document.getElementById('dropdown').style.display = 'none';
-        document.getElementById('auth-container').style.display = 'none';
-        document.querySelector('.menu').style.display = 'flex';
-    }
-
-    function hideContainer(containerId) {
-        document.getElementById(containerId).style.display = 'none';
-        document.getElementById('overlay').style.display = 'none';
-    }
-
-    function openZoom(src) {
-        document.body.style.overflow = 'hidden';
-        const overlay = document.getElementById('zoom-overlay');
-        const zoomImage = document.getElementById('zoom-image');
-        zoomImage.src = src;
-        overlay.style.display = 'flex';
-    }
-
-    function closeZoom() {
-        document.body.style.overflow = '';
-        document.getElementById('zoom-overlay').style.display = 'none';
-    }
-
-</script>
+    </script>
 </html>
