@@ -737,6 +737,39 @@ html, body {
         .news-toggle i {
             font-size: 20px;
         }
+          .profile-section {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background-color: #444;
+    border-bottom: 1px solid #555;
+}
+
+.profile-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-right: 10px;
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-username {
+    color: white;
+    font-weight: 500;
+    font-size: 16px;
+}
+
+.menu-divider {
+    height: 1px;
+    background-color: #555;
+    margin: 5px 0;
+}
   </style>
 </head>
 <body>
@@ -779,12 +812,19 @@ html, body {
     </div>
 
     <div class="dropdown" id="dropdown">
-        <a href="#" onclick="showContainer('chat')">Chat with AI</a>
-        <a href="#" onclick="showContainer('about')">About</a>
-        <a href="#" onclick="showContainer('features')">Features</a>
-        <a href="#" onclick="showContainer('help')">Help</a>
-        <a href="#" onclick="logout()">Logout</a>
+    <div class="profile-section">
+        <div class="profile-avatar">
+            <img src="https://i.pravatar.cc/50?u=${encodeURIComponent(currentUsername)}" alt="Profile">
+        </div>
+        <div class="profile-username">${currentUsername}</div>
     </div>
+    <div class="menu-divider"></div>
+    <a href="#" onclick="showContainer('chat')">Chat with AI</a>
+    <a href="#" onclick="showContainer('about')">About</a>
+    <a href="#" onclick="showContainer('features')">Features</a>
+    <a href="#" onclick="showContainer('help')">Help</a>
+    <a href="#" onclick="logout()">Logout</a>
+</div>
 
     <button class="news-toggle" onclick="toggleNews()" title="Toggle News">
         <i class="fas fa-newspaper"></i>
@@ -1056,6 +1096,7 @@ async function handleAuth() {
         document.querySelector('.chat-input').style.display = 'flex';
         document.querySelector('.news-toggle').style.display = 'block';
         updateGoTopBtn();
+        updateProfileSection(); // Add this line
         initializeChat();
       }, 500);
     } else {
@@ -1176,6 +1217,7 @@ function scrollToBottomIfNearBottom(container, threshold = 100) {
   }
 }
 
+  
 function displayMessage(text, sender, repliedTo = null, username = '', messageId = null) {
   const messageDiv = document.createElement('div');
   messageDiv.className = `message ${sender}`;
@@ -1787,16 +1829,22 @@ function closeZoom() {
         }
 
         function logout() {
-            localStorage.removeItem('currentUser');
-            document.getElementById('auth-container').style.display = 'flex';
-            document.querySelector('.menu').style.display = 'none';
-            document.querySelector('.chat-input').style.display = 'none';
-            document.getElementById('dropdown').style.display = 'none';
-            document.querySelector('.news-toggle').style.display = 'none';
-            document.querySelector('.news-container').style.display = 'none';
-            document.querySelectorAll('.container').forEach(container => container.classList.remove('active'));
-            updateGoTopBtn();
-        }
+          localStorage.removeItem('currentUser');
+          document.getElementById('auth-container').style.display = 'flex';
+          document.querySelector('.menu').style.display = 'none';
+          document.querySelector('.chat-input').style.display = 'none';
+          document.getElementById('dropdown').style.display = 'none';
+          document.querySelector('.news-toggle').style.display = 'none';
+          document.querySelector('.news-container').style.display = 'none';
+    
+    // Clear the profile section
+    const profileSection = document.querySelector('.profile-section');
+    const divider = document.querySelector('.menu-divider');
+    if (profileSection) profileSection.remove();
+    if (divider) divider.remove();
+    
+    updateGoTopBtn();
+}
 
         function toggleDropdown() {
             const dropdown = document.getElementById('dropdown');
@@ -1823,6 +1871,32 @@ function closeZoom() {
             document.getElementById(containerId).style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
         }
+  
+  // fuction of profile in hambuger menu
+  
+    function toggleDropdown() {
+    const dropdown = document.getElementById('dropdown');
+    const currentUser = localStorage.getItem('currentUser');
+    
+    if (dropdown.style.display === 'block') {
+        dropdown.style.display = 'none';
+    } else {
+        // Only show if logged in
+        if (currentUser) {
+            dropdown.style.display = 'block';
+            
+            // Update profile info each time menu is opened
+            const usernameElement = document.querySelector('.profile-username');
+            if (usernameElement) {
+                usernameElement.textContent = currentUser;
+            }
+            const avatarImg = document.querySelector('.profile-avatar img');
+            if (avatarImg) {
+                avatarImg.src = `https://i.pravatar.cc/50?u=${encodeURIComponent(currentUsername)}`;
+            }
+        }
+    }
+}
 
     function openZoom(src) {
     document.body.style.overflow = 'hidden';
