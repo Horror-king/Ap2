@@ -740,14 +740,14 @@ html, body {
           .profile-section {
     display: flex;
     align-items: center;
-    padding: 15px;
+    padding: 19px;
     background-color: #444;
-    border-bottom: 1px solid #555;
+    border-bottom: 1px none #555;
 }
 
 .profile-avatar {
-    width: 40px;
-    height: 40px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     overflow: hidden;
     margin-right: 10px;
@@ -1828,14 +1828,50 @@ function closeZoom() {
             }
         }
 
-        function logout() {
-          localStorage.removeItem('currentUser');
-          document.getElementById('auth-container').style.display = 'flex';
-          document.querySelector('.menu').style.display = 'none';
-          document.querySelector('.chat-input').style.display = 'none';
-          document.getElementById('dropdown').style.display = 'none';
-          document.querySelector('.news-toggle').style.display = 'none';
-          document.querySelector('.news-container').style.display = 'none';
+      // Add this function to update the profile section
+function updateProfileSection() {
+    const dropdown = document.getElementById('dropdown');
+    const currentUsername = localStorage.getItem('currentUser');
+    
+    // Remove existing profile section if it exists
+    const existingProfile = document.querySelector('.profile-section');
+    const existingDivider = document.querySelector('.menu-divider');
+    if (existingProfile) existingProfile.remove();
+    if (existingDivider) existingDivider.remove();
+    
+    // Only add profile section if user is logged in
+    if (currentUsername) {
+        const profileSection = document.createElement('div');
+        profileSection.className = 'profile-section';
+        profileSection.innerHTML = `
+            <div class="profile-avatar">
+                <img src="https://i.pravatar.cc/50?u=${encodeURIComponent(currentUsername)}" alt="Profile">
+            </div>
+            <div class="profile-username">${currentUsername}</div>
+        `;
+        
+        const divider = document.createElement('div');
+        divider.className = 'menu-divider';
+        
+        // Insert at the beginning of dropdown
+        dropdown.insertBefore(divider, dropdown.firstChild);
+        dropdown.insertBefore(profileSection, dropdown.firstChild);
+    }
+}
+
+// Then modify your handleAuth function's success case to call this:
+// In the login success case, add this line:
+updateProfileSection();
+
+// Also modify your logout function to properly clear the profile:
+function logout() {
+    localStorage.removeItem('currentUser');
+    document.getElementById('auth-container').style.display = 'flex';
+    document.querySelector('.menu').style.display = 'none';
+    document.querySelector('.chat-input').style.display = 'none';
+    document.getElementById('dropdown').style.display = 'none';
+    document.querySelector('.news-toggle').style.display = 'none';
+    document.querySelector('.news-container').style.display = 'none';
     
     // Clear the profile section
     const profileSection = document.querySelector('.profile-section');
@@ -1845,7 +1881,6 @@ function closeZoom() {
     
     updateGoTopBtn();
 }
-
         function toggleDropdown() {
             const dropdown = document.getElementById('dropdown');
             dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
@@ -1872,32 +1907,6 @@ function closeZoom() {
             document.getElementById('overlay').style.display = 'none';
         }
   
-  // fuction of profile in hambuger menu
-  
-    function toggleDropdown() {
-    const dropdown = document.getElementById('dropdown');
-    const currentUser = localStorage.getItem('currentUser');
-    
-    if (dropdown.style.display === 'block') {
-        dropdown.style.display = 'none';
-    } else {
-        // Only show if logged in
-        if (currentUser) {
-            dropdown.style.display = 'block';
-            
-            // Update profile info each time menu is opened
-            const usernameElement = document.querySelector('.profile-username');
-            if (usernameElement) {
-                usernameElement.textContent = currentUser;
-            }
-            const avatarImg = document.querySelector('.profile-avatar img');
-            if (avatarImg) {
-                avatarImg.src = `https://i.pravatar.cc/50?u=${encodeURIComponent(currentUsername)}`;
-            }
-        }
-    }
-}
-
     function openZoom(src) {
     document.body.style.overflow = 'hidden';
     const overlay = document.getElementById('zoom-overlay');
